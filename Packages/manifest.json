@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.meta.xr.sdk.all": "203.0.0",
     "com.unity.collab-proxy": "2.12.4",
     "com.unity.feature.development": "1.0.2",
     "com.unity.inputsystem": "1.19.0",
@@ -12,7 +13,6 @@
     "com.unity.visualscripting": "1.9.11",
     "com.unity.xr.interaction.toolkit": "3.0.11",
     "com.unity.xr.meta-openxr": "2.5.0",
-    "com.unity.xr.oculus": "4.5.4",
     "com.unity.xr.openxr": "1.16.1",
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.ai": "1.0.0",
