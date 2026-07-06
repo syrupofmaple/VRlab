@@ -1,5 +1,25 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-1148644772762702687
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b00045f12942b46c698459096c89274e, type: 3}
+  m_Name: FullScreenPassRendererFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  injectionPoint: 600
+  fetchColorBuffer: 1
+  requirements: 0
+  passMaterial: {fileID: 2100000, guid: c48f55d586d97a64abd6692d9cbc7d2d, type: 2}
+  passIndex: 0
+  bindDepthStencilAttachment: 0
+  m_Version: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -26,7 +46,8 @@ MonoBehaviour:
     probeVolumeBlendStatesCS: {fileID: 0}
   m_RendererFeatures:
   - {fileID: 1950226309864247628}
-  m_RendererFeatureMap: 4c5114ff7e98101b
+  - {fileID: -1148644772762702687}
+  m_RendererFeatureMap: 4c5114ff7e98101ba1ac5e3aaa310ff0
   m_UseNativeRenderPass: 0
   xrSystemData: {fileID: 0}
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
@@ -51,7 +72,7 @@ MonoBehaviour:
   m_DepthAttachmentFormat: 0
   m_DepthTextureFormat: 0
   m_AccurateGbufferNormals: 0
-  m_IntermediateTextureMode: 1
+  m_IntermediateTextureMode: 0
 --- !u!114 &1950226309864247628
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -64,7 +85,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89e218761130fc64f9145967d8e03087, type: 3}
   m_Name: MotionGrayscaleFeature
   m_EditorClassIdentifier: 
-  m_Active: 1
+  m_Active: 0
   settings:
     motionThreshold: 0.02
     grayscaleStrength: 1
+--- !u!114 &3503631932245985113
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05513eb13278c61459ec1a620f3fff8c, type: 3}
+  m_Name: OpticalFlowFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  settings:
+    flowThreshold: 0
+    mistStrength: 1
+    edgeSoftness: 0.05
+    blurSize: 0.02

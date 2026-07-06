@@ -1,0 +1,112 @@
+// OpticalFlow.compute
+// Horn-Schunck法によるオプティカルフロー計算 (Quest向け軽量実装)
+// 論文「オプティカルフローに応じた非円形視野制限によるVR酔い軽減手法」3.2節を参考に実装
+//
+// 処理の流れ:
+//   1. CSComputeGradients : 前フレームとの輝度差分・空間勾配を計算し、U,Vを0初期化
+//   2. CSIterate           : Horn-Schunckの反復更新式を N 回適用 (Ping-Pongバッファ)
+//   3. CSGridReduce        : 16x16グリッドに平均化 (論文3.2節: 256グリッドに分割)
+
+#pragma kernel CSComputeGradients
+#pragma kernel CSIterate
+#pragma kernel CSGridReduce
+
+Texture2D<float> _PrevFrame;
+Texture2D<float> _CurrFrame;
+
+RWStructuredBuffer<float> _Ix;
+RWStructuredBuffer<float> _Iy;
+RWStructuredBuffer<float> _It;
+RWStructuredBuffer<float> _U;
+RWStructuredBuffer<float> _V;
+
+RWStructuredBuffer<float> _USrc;
+RWStructuredBuffer<float> _VSrc;
+RWStructuredBuffer<float> _UDst;
+RWStructuredBuffer<float> _VDst;
+
+RWStructuredBuffer<float> _GridAverage;
+
+int _FrameWidth;
+int _FrameHeight;
+int _GridSize;
+float _Alpha; // 平滑化項の重み(大きいほど滑らかだが敏感さが下がる)
+
+int Idx(int x, int y) { return y * _FrameWidth + x; }
+
+[numthreads(8,8,1)]
+void CSComputeGradients (uint3 id : SV_DispatchThreadID)
+{
+    int x = (int)id.x, y = (int)id.y;
+    if (x >= _FrameWidth || y >= _FrameHeight) return;
+
+    int xm = max(x - 1, 0), xp = min(x + 1, _FrameWidth - 1);
+    int ym = max(y - 1, 0), yp = min(y + 1, _FrameHeight - 1);
+
+    float ix = (_CurrFrame[uint2(xp, y)] - _CurrFrame[uint2(xm, y)]) * 0.5;
+    float iy = (_CurrFrame[uint2(x, yp)] - _CurrFrame[uint2(x, ym)]) * 0.5;
+    float it = _CurrFrame[uint2(x, y)] - _PrevFrame[uint2(x, y)];
+
+    int i = Idx(x, y);
+    _Ix[i] = ix;
+    _Iy[i] = iy;
+    _It[i] = it;
+    _U[i] = 0;
+    _V[i] = 0;
+}
+
+// Horn-Schunckの反復更新式:
+//   u = uBar - Ix*(Ix*uBar + Iy*vBar + It) / (alpha^2 + Ix^2 + Iy^2)
+//   v = vBar - Iy*(Ix*uBar + Iy*vBar + It) / (alpha^2 + Ix^2 + Iy^2)
+[numthreads(8,8,1)]
+void CSIterate (uint3 id : SV_DispatchThreadID)
+{
+    int x = (int)id.x, y = (int)id.y;
+    if (x >= _FrameWidth || y >= _FrameHeight) return;
+
+    int xm = max(x - 1, 0), xp = min(x + 1, _FrameWidth - 1);
+    int ym = max(y - 1, 0), yp = min(y + 1, _FrameHeight - 1);
+
+    float uBar = (_USrc[Idx(xm, y)] + _USrc[Idx(xp, y)] + _USrc[Idx(x, ym)] + _USrc[Idx(x, yp)]) * 0.25;
+    float vBar = (_VSrc[Idx(xm, y)] + _VSrc[Idx(xp, y)] + _VSrc[Idx(x, ym)] + _VSrc[Idx(x, yp)]) * 0.25;
+
+    int i = Idx(x, y);
+    float ix = _Ix[i], iy = _Iy[i], it = _It[i];
+
+    float numerator = ix * uBar + iy * vBar + it;
+    float denominator = _Alpha * _Alpha + ix * ix + iy * iy;
+
+    _UDst[i] = uBar - ix * numerator / denominator;
+    _VDst[i] = vBar - iy * numerator / denominator;
+}
+
+// 論文3.2節: 画面を16x16(256グリッド)に分割し、各グリッド内の平均フロー量を求める
+[numthreads(16,16,1)]
+void CSGridReduce (uint3 id : SV_DispatchThreadID)
+{
+    int gx = (int)id.x, gy = (int)id.y;
+    if (gx >= _GridSize || gy >= _GridSize) return;
+
+    int cellW = _FrameWidth / _GridSize;
+    int cellH = _FrameHeight / _GridSize;
+
+    float sum = 0;
+    int count = 0;
+    for (int y = 0; y < cellH; y++)
+    {
+        for (int x = 0; x < cellW; x++)
+        {
+            int px = gx * cellW + x;
+            int py = gy * cellH + y;
+            if (px < _FrameWidth && py < _FrameHeight)
+            {
+                int i = Idx(px, py);
+                float u = _U[i]; // C#側で最終Ping-Pongバッファをバインドする
+                float v = _V[i];
+                sum += sqrt(u * u + v * v);
+                count++;
+            }
+        }
+    }
+    _GridAverage[gy * _GridSize + gx] = (count > 0) ? sum / count : 0;
+}
